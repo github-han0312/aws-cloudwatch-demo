@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Log filter, metrics, alarm, sns, email'
+Resources:
+  TristanLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+        LogGroupName: '/aws/lambda/TristanPushLogFunction'
+        RetentionInDays: 30
+  PushLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+      Policies:
+        - PolicyName: tristan-push-log-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - 'arn:aws:s3:::tristan-lambda-files-bucket'
+                  - 'arn:aws:s3:::tristan-lambda-files-bucket/*'
+  TristanPushLogFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: push log to cloudwatch
+      FunctionName: TristanPushLogFunction
+      MemorySize: 256
+      Handler: main
+      Runtime: go1.x
+      Role: !GetAtt 'PushLogRole.Arn'
+      Timeout: 240
+      Code:
+        S3Bucket: tristan-lambda-files-bucket
+        S3Key: main.zip
+  TristanPushLogSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt 'TristanPushLogFunction.Arn'
+          Id: !Join ['-', [TristanPushLogFunction, 'event-rule']]
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref "TristanPushLogFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt 'TristanPushLogSchedule.Arn'
+  HelloMetricFilter: 
+    Type: AWS::Logs::MetricFilter
+    Properties: 
+      LogGroupName: 
+        Ref: TristanLogGroup
+      FilterPattern: Hello
+      MetricTransformations: 
+        - 
+          MetricValue: "15"
+          MetricNamespace: "Tristan/SayHello"
+          MetricName: "Hello"
+  TristanCustomMetricsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: Tristan/SayHello
+      MetricName: Hello
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      AlarmActions:
+        - !Ref TristanCustomMetricsAlarmTopic
+  TristanCustomMetricsAlarmTopic:
+      Type: AWS::SNS::Topic
+  CustomMetricsAlarmEmailSubscriber:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Endpoint: xiaofeng.zhi@thoughtworks.com
+        Protocol: email
+        TopicArn: !Ref TristanCustomMetricsAlarmTopic

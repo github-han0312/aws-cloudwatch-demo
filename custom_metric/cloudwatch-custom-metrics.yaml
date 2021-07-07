@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Example Lambda zip copy'
+Resources:
+  PushCoustomMetircsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+      Policies:
+        - PolicyName: tristan-push-custom-metrics-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - 'arn:aws:s3:::tristan-lambda-files-bucket/*'
+  TristanPushCoustomMetircsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: push custom metrics to cloudwatch
+      FunctionName: TristanPushCustomMetricsFunction
+      MemorySize: 256
+      Handler: com.zxf.Main::handleRequest
+      Runtime: java8
+      Role: !GetAtt 'PushCoustomMetircsRole.Arn'
+      Timeout: 240
+      Code:
+        S3Bucket: tristan-lambda-files-bucket
+        S3Key: cloudwatch-custom-metrics-1.0-SNAPSHOT.jar
+  TristanCustomMetricsSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "ScheduledRule"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt 'TristanPushCoustomMetircsFunction.Arn'
+          Id: !Join ['-', [TristanPushCustomMetricsFunction, 'event-rule']]
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref "TristanPushCoustomMetircsFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt 'TristanCustomMetricsSchedule.Arn'
+  TristanCustomMetricsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: SITE/TRAFFIC
+      MetricName: CUSTOM_METRICS
+      Dimensions:
+        - Name: INFO
+          Value: TEST
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      AlarmActions:
+        - !Ref TristanCustomMetricsAlarmTopic
+  TristanCustomMetricsAlarmTopic:
+      Type: AWS::SNS::Topic
+  CustomMetricsAlarmEmailSubscriber:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Endpoint: xiaofeng.zhi@thoughtworks.com
+        Protocol: email
+        TopicArn: !Ref TristanCustomMetricsAlarmTopic

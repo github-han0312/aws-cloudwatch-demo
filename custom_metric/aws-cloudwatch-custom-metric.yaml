@@ -1,0 +1,82 @@
+Description:  cloudwatch custom metric
+Resources:
+  CloudWatchCustomMetricRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudWatchPutCustomMetricPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - 'arn:aws:s3:::han-lambda-bucket'
+                  - 'arn:aws:s3:::han-lambda-bucket/*'
+  CloudWatchCustomMetricFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CloudWatchCustomMetricFunction
+      Description: push custom metrics to cloudwatch
+      Role: !GetAtt 'CloudWatchCustomMetricRole.Arn'
+      Timeout: 300
+      PackageType: Zip
+      Runtime: python3.8
+      MemorySize: 256
+      Handler: lambda_function.lambda_handler
+      Code:
+        S3Bucket: han-lambda-bucket
+        S3Key: lambda_function.zip
+
+  CloudWatchEvent:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "rule triggered every 1 minute to invoke lambda function to put custom metric data"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt 'CloudWatchCustomMetricFunction.Arn'
+          Id: !Join [ '-', [ CloudWatchCustomMetricFunction, 'event-rule' ] ]
+
+  #  resource grants EventBridge permission to invoke the associated function.
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "CloudWatchCustomMetricFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt 'CloudWatchEvent.Arn'
+  CloudWatchCustomMetricsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: Han_CustomMetrics
+      MetricName: numbers_of_library
+      Dimensions:
+        - Name: NiaoWuBookStore
+          Value: NumbersEachDay
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 4
+      ComparisonOperator: LessThanOrEqualToThreshold
+      Threshold: 50
+      AlarmActions:
+        - !Ref CloudWatchCustomMetricsAlarmTopic
+  CloudWatchCustomMetricsAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName : CloudWatchCustomMetricsAlarmTopic
+      Subscription:
+        - Endpoint: huiyi.han@thoughtworks.com
+          Protocol: email

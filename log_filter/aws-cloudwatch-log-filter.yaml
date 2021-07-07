@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'filter log from lambda,then triggered alarm to sns'
+Resources:
+  FilterLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: '/aws/lambda/CloudWatchLogFilterFunction'
+      RetentionInDays: 7
+  CloudWatchLogFilterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole          #此role 的作用
+      Path: /
+      Policies:
+        - PolicyName: filter-log-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - 'arn:aws:s3:::han-lambda-bucket'
+                  - 'arn:aws:s3:::han-lambda-bucket/*'
+  CloudWatchLogFilterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: output log
+      FunctionName: CloudWatchLogFilterFunction
+      MemorySize: 256
+      Handler: log_handler.hello
+      Runtime: nodejs12.x
+      Role: !GetAtt 'CloudWatchLogFilterRole.Arn'
+      Timeout: 240
+      Code:
+        S3Bucket: han-lambda-bucket
+        S3Key: Hello.zip
+  CloudWatchLogFilterSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: LogFilterRule
+      Description: "rule triggered every 1 minutes to invoke log filter function"
+      ScheduleExpression: "rate(1 minute)"
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt 'CloudWatchLogFilterFunction.Arn'
+          Id: !Join [ '-', [ CloudWatchLogFilterFunction, 'event-rule' ] ]
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "CloudWatchLogFilterFunction"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt 'CloudWatchLogFilterSchedule.Arn'
+  CloudWatchLogMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName:
+        Ref: FilterLogGroup
+      FilterPattern: RECORD
+      MetricTransformations:
+        -
+          MetricValue: 2
+          MetricNamespace: "Han_CustomMetrics"
+          MetricName: "RecordLogCount"
+  TristanCustomMetricsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: Han_CustomMetrics
+      MetricName: RecordingLog
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 2
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1
+      Unit: Count
+      AlarmActions:
+        - !Ref CloudWatchFilterLogAlarmTopic
+  CloudWatchFilterLogAlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: CloudWatchFilterLogAlarmTopic
+      Subscription:
+        - Endpoint: huiyi.han@thoughtworks.com
+          Protocol: email
