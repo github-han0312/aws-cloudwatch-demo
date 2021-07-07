@@ -1,6 +1,6 @@
 # aws cloudwatch
 
-##Basic
+## Basic
 
 **1. CloudWatch 是什么？我们为什么要使用CloudWatch？**
 
@@ -40,7 +40,7 @@ aws cloudformation create-stack --stack-name cloudwatch-log-filter-metric-stack 
 
 ![log](log.png)
 
-###problem
+### problem
 
 1. 添加permission之后影响的account的capacity
 2. lambda采用不同语言时的handler
