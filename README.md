@@ -31,7 +31,17 @@ Amazon CloudWatch Events delivers a near real-time stream of system events that 
 
 ## Practice
 1)
-aws cloudformation create-stack --stack-name cloudwatch-custom-metric-stack --profile tw-aws-beach --template-body file://aws-cloudwatch-custom-metric.yaml  --capabilities CAPABILITY_NAMED_IAM
+aws cloudformation create-stack --stack-name cloudwatch-custom-metric-stack --profile tw-aws-beach --template-body file://aws-cloudwatch-custom-metric.yaml  --capabilities CAPABILITY_NAMED_IA
+
+![metric](custom_metric.png)
 
 2)
 aws cloudformation create-stack --stack-name cloudwatch-log-filter-metric-stack --profile tw-aws-beach --template-body file://aws-cloudwatch-log-filter.yaml --capabilities CAPABILITY_NAMED_IAM
+
+![log](log_filter.png)
+
+###problem
+
+1. 添加permission之后影响的account的capacity
+2. lambda采用不同语言时的handler
+3. alarm的Period、EvaluationPeriods、DatapointsToAlarm

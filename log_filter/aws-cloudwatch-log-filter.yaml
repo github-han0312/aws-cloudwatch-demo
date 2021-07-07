@@ -17,7 +17,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole          #此role 的作用
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Path: /
       Policies:
         - PolicyName: filter-log-policy
@@ -71,17 +71,16 @@ Resources:
           MetricValue: 1
           MetricNamespace: "Han_CustomMetrics"
           MetricName: "RecordLogCount"
-  TristanCustomMetricsAlarm:
+  LogFilterMetricsAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
       Namespace: Han_CustomMetrics
-      MetricName: RecordingLog
-      Statistic: Minimum
-      Period: 60
+      MetricName: RecordLogCount
+      Statistic: Sum
+      Period: 600
       EvaluationPeriods: 1
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Threshold: 1
-      Unit: Count
       AlarmActions:
         - !Ref CloudWatchFilterLogAlarmTopic
   CloudWatchFilterLogAlarmTopic:
