@@ -38,7 +38,7 @@ aws cloudformation create-stack --stack-name cloudwatch-custom-metric-stack --pr
 2)
 aws cloudformation create-stack --stack-name cloudwatch-log-filter-metric-stack --profile tw-aws-beach --template-body file://aws-cloudwatch-log-filter.yaml --capabilities CAPABILITY_NAMED_IAM
 
-![log](log_filter.png)
+![log](log.png)
 
 ###problem
 
