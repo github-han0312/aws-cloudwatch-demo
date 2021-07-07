@@ -14,8 +14,6 @@
 
 A metric represents a time-ordered set of data points that are published to CloudWatch. Think of a metric as a variable to monitor, and the data points as representing the values of that variable over time. For example, the CPU usage of a particular EC2 instance is one metric provided by Amazon EC2.
 
-种类
-custom和 系统本就有的
 
 **3.CloudWatch Events是什么？可以应用在那些场景。**
 
