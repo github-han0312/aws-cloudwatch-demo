@@ -88,5 +88,5 @@ Resources:
     Properties:
       TopicName: CloudWatchFilterLogAlarmTopic
       Subscription:
-        - Endpoint: huiyi.han@thoughtworks.com
+        - Endpoint: xxx@thoughtworks.com
           Protocol: email

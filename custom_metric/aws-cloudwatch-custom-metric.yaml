@@ -34,7 +34,6 @@ Resources:
       Timeout: 300
       PackageType: Zip
       Runtime: python3.8
-      MemorySize: 256
       Handler: lambda_function.lambda_handler
       Code:
         S3Bucket: han-lambda-bucket
@@ -78,5 +77,5 @@ Resources:
     Properties:
       TopicName : CloudWatchCustomMetricsAlarmTopic
       Subscription:
-        - Endpoint: huiyi.han@thoughtworks.com
+        - Endpoint: xxx@thoughtworks.com
           Protocol: email
